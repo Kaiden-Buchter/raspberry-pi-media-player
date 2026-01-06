@@ -42,12 +42,48 @@ class MediaPlayer:
         try:
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
+            
+            # Validate configuration
+            self.validate_config(config)
+            
             return config
         except FileNotFoundError:
             print(f"Error: Configuration file '{config_path}' not found.")
             print("Please copy config.yaml.example to config.yaml and update settings.")
             sys.exit(1)
         except yaml.YAMLError as e:
+            print(f"Error parsing configuration file: {e}")
+            sys.exit(1)
+    
+    def validate_config(self, config):
+        """Validate configuration values"""
+        # Validate Ken Burns settings
+        if config['media_player']['ken_burns_effect']:
+            kb_config = config['media_player']['ken_burns']
+            
+            # Ensure steps is at least 1
+            if kb_config['steps'] < 1:
+                print("Warning: ken_burns.steps must be at least 1. Setting to 1.")
+                kb_config['steps'] = 1
+            
+            # Cap maximum steps to prevent performance issues (300 steps / 10 sec = 30 fps max)
+            max_steps = 600  # This allows up to 60 fps at 10 second duration
+            if kb_config['steps'] > max_steps:
+                print(f"Warning: ken_burns.steps capped at {max_steps} for performance.")
+                kb_config['steps'] = max_steps
+            
+            # Validate zoom level
+            if kb_config['max_zoom'] < 1.0:
+                print("Warning: ken_burns.max_zoom must be >= 1.0. Setting to 1.0.")
+                kb_config['max_zoom'] = 1.0
+            elif kb_config['max_zoom'] > 3.0:
+                print("Warning: ken_burns.max_zoom > 3.0 may cause quality issues. Capping at 3.0.")
+                kb_config['max_zoom'] = 3.0
+        
+        # Validate photo duration
+        if config['media_player']['photo_duration'] < 1:
+            print("Warning: photo_duration must be at least 1 second. Setting to 1.")
+            config['media_player']['photo_duration'] = 1
             print(f"Error parsing configuration file: {e}")
             sys.exit(1)
     
@@ -191,7 +227,7 @@ class MediaPlayer:
         """Apply Ken Burns pan and zoom effect to an image"""
         ken_burns_config = self.config['media_player']['ken_burns']
         max_zoom = ken_burns_config['max_zoom']
-        steps = max(ken_burns_config['steps'], 1)  # Ensure steps is at least 1
+        steps = ken_burns_config['steps']  # Already validated in load_config
         
         height, width = image.shape[:2]
         
