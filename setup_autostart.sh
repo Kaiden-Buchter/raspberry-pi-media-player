@@ -124,6 +124,6 @@ echo "  sudo systemctl disable media-player.service"
 echo ""
 
 # Clean up temp files
-rm /tmp/gdrive-sync.service /tmp/media-player.service
+rm -f /tmp/gdrive-sync.service /tmp/media-player.service
 
 echo "Done!"

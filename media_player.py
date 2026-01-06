@@ -191,7 +191,7 @@ class MediaPlayer:
         """Apply Ken Burns pan and zoom effect to an image"""
         ken_burns_config = self.config['media_player']['ken_burns']
         max_zoom = ken_burns_config['max_zoom']
-        steps = ken_burns_config['steps']
+        steps = max(ken_burns_config['steps'], 1)  # Ensure steps is at least 1
         
         height, width = image.shape[:2]
         
@@ -206,6 +206,7 @@ class MediaPlayer:
         
         # Calculate time per frame
         frame_delay = duration / steps
+        target_fps = steps / duration
         
         clock = pygame.time.Clock()
         
@@ -259,7 +260,7 @@ class MediaPlayer:
             pygame.display.flip()
             
             # Maintain frame rate
-            clock.tick(1 / frame_delay)
+            clock.tick(target_fps)
         
         return True
     
