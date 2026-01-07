@@ -1,0 +1,73 @@
+# Media Player Configuration
+
+# Google Drive Settings
+google_drive:
+  # The ID of the shared Google Drive folder to sync from
+  # You can find this in the URL when viewing the folder in Google Drive
+  # Example: https://drive.google.com/drive/folders/YOUR_FOLDER_ID_HERE
+  folder_id: "YOUR_FOLDER_ID_HERE"
+  
+  # Local directory to sync media files to
+  local_media_dir: "./media"
+  
+  # Sync interval in minutes
+  sync_interval: 15
+  
+  # OAuth2 credentials file (get from Google Cloud Console)
+  client_secrets_file: "client_secrets.json"
+
+# Media Player Settings
+media_player:
+  # Photo display duration in seconds
+  photo_duration: 10
+  
+  # Enable Ken Burns effect (pan and zoom) for photos
+  ken_burns_effect: true
+  
+  # Ken Burns effect settings
+  ken_burns:
+    # Maximum zoom level (1.0 = no zoom, 1.3 = 30% zoom)
+    max_zoom: 1.3
+    
+    # Smoothness of the effect (higher = smoother but more CPU intensive)
+    steps: 300
+  
+  # Supported video formats
+  video_formats:
+    - ".mp4"
+    - ".mov"
+    - ".avi"
+    - ".mkv"
+  
+  # Supported image formats
+  image_formats:
+    - ".jpg"
+    - ".jpeg"
+    - ".png"
+    - ".gif"
+    - ".heic"
+    - ".HEIC"
+  
+  # Shuffle playback order
+  shuffle: false
+  
+  # Display resolution (width, height)
+  # Set to null for fullscreen auto-detection
+  resolution: null
+  
+  # Enable fullscreen mode
+  fullscreen: true
+
+# Logging
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  
+  # Log file location
+  file: "media_player.log"
+  
+  # Maximum log file size in bytes (10MB default)
+  max_size: 10485760
+  
+  # Number of backup log files to keep
+  backup_count: 5

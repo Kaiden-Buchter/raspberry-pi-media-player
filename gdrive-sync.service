@@ -1,0 +1,17 @@
+[Unit]
+Description=Raspberry Pi Media Player - Google Drive Sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/raspberry-pi-media-player
+ExecStart=/home/pi/raspberry-pi-media-player/venv/bin/python3 /home/pi/raspberry-pi-media-player/gdrive_sync.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
