@@ -175,10 +175,10 @@ class GoogleDriveSync:
             
             # Track all Google Drive file paths for deletion check
             # Normalize to absolute paths for comparison
-            local_dir_abs = str(Path(local_dir).resolve())
             gdrive_file_paths = set()
             for item in media_files:
-                gdrive_file_paths.add(str(Path(os.path.join(local_dir_abs, item['path'])).resolve()))
+                # Join local_dir with relative path, then resolve to absolute path
+                gdrive_file_paths.add(str(Path(local_dir).joinpath(item['path']).resolve()))
             
             # Download or update files
             downloaded_count = 0
