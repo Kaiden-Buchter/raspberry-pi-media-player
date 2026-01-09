@@ -199,21 +199,25 @@ python3 media_player.py
 
 ## Automatic Startup on Boot
 
-To make the media player start automatically when the Raspberry Pi boots:
+**For detailed auto-start instructions, see [docs/AUTOSTART.md](docs/AUTOSTART.md)**
 
-### Step 1: Update Service Files
+Quick setup - run this command from your installation directory:
 
-Edit the service files to match your installation path:
+```bash
+./setup_autostart.sh
+```
+
+The script will automatically detect your installation path and username, then install the systemd services.
+
+### Manual Setup (Alternative)
+
+If you prefer to set up manually, edit the service files to match your installation path:
 
 ```bash
 # Edit user in service files if not using 'pi' user
 nano gdrive-sync.service
-nano media-player.service
-```
 
-Update paths if you installed in a different location (default is `/home/pi/raspberry-pi-media-player`).
-
-### Step 2: Install Services
+Then install the services:
 
 ```bash
 # Copy service files to systemd
@@ -232,7 +236,7 @@ sudo systemctl start gdrive-sync.service
 sudo systemctl start media-player.service
 ```
 
-### Step 3: Check Service Status
+For more details, troubleshooting, and service management commands, see **[docs/AUTOSTART.md](docs/AUTOSTART.md)**.
 
 ```bash
 # Check if services are running
@@ -254,12 +258,6 @@ sudo systemctl stop media-player.service
 # Restart services
 sudo systemctl restart gdrive-sync.service
 sudo systemctl restart media-player.service
-
-# Disable autostart
-sudo systemctl disable gdrive-sync.service
-sudo systemctl disable media-player.service
-```
-
 ## Troubleshooting
 
 ### No Media Files Found
