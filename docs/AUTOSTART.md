@@ -17,7 +17,7 @@ Before enabling auto-start, make sure:
 The easiest way to enable auto-start is to use the provided setup script:
 
 ```bash
-cd /home/wyorobotics/Desktop/raspberry-pi-media-player-main
+cd /path/to/your/raspberry-pi-media-player
 ./setup_autostart.sh
 ```
 
@@ -154,7 +154,7 @@ sudo systemctl status media-player.service
 
 2. **Python environment issues**: Verify the virtual environment exists
    ```bash
-   ls -la /home/wyorobotics/Desktop/raspberry-pi-media-player-main/venv
+   ls -la /path/to/your/raspberry-pi-media-player/venv
    ```
 
 3. **Display not ready**: The media player needs the graphical interface
@@ -163,7 +163,7 @@ sudo systemctl status media-player.service
 
 4. **Permission issues**: Make sure the user in the service file matches your username
    ```bash
-   whoami  # Should show 'wyorobotics'
+   whoami  # Should show your username
    ```
 
 ### Display Issues on Boot
@@ -190,7 +190,7 @@ If the media player doesn't show on your display:
 
 1. **Check credentials**:
    ```bash
-   ls -la /home/wyorobotics/Desktop/raspberry-pi-media-player-main/credentials.json
+   ls -la /path/to/your/raspberry-pi-media-player/credentials.json
    ```
 
 2. **Check network**:
@@ -207,7 +207,7 @@ If the media player doesn't show on your display:
 
 1. **Check media files exist**:
    ```bash
-   ls -la /home/wyorobotics/Desktop/raspberry-pi-media-player-main/media/
+   ls -la /path/to/your/raspberry-pi-media-player/media/
    ```
 
 2. **Wait for sync**:
@@ -215,7 +215,7 @@ If the media player doesn't show on your display:
 
 3. **Check config.yaml**:
    ```bash
-   cat /home/wyorobotics/Desktop/raspberry-pi-media-player-main/config.yaml
+   cat /path/to/your/raspberry-pi-media-player/config.yaml
    ```
 
 ## Manual Service Installation
@@ -228,7 +228,7 @@ The static service files in the repository are templates. You need to use `setup
 
 ```bash
 # Navigate to your installation directory
-cd /home/wyorobotics/Desktop/raspberry-pi-media-player-main
+cd /path/to/your/raspberry-pi-media-player
 
 # The setup_autostart.sh script will automatically create service files
 # with your current directory and username
