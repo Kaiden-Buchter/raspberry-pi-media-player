@@ -1,3 +1,8 @@
+# NOTE: This is a TEMPLATE service file for reference only
+# DO NOT manually copy this file to /etc/systemd/system/
+# Instead, run ./setup_autostart.sh which will create the service
+# files with your actual installation path and username
+
 [Unit]
 Description=Raspberry Pi Media Player - Google Drive Sync
 After=network-online.target
