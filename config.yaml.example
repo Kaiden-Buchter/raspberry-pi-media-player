@@ -15,6 +15,9 @@ google_drive:
   
   # OAuth2 credentials file (get from Google Cloud Console)
   client_secrets_file: "client_secrets.json"
+  
+  # Delete local files when removed from Google Drive
+  delete_local_when_removed: true
 
 # Media Player Settings
 media_player:
