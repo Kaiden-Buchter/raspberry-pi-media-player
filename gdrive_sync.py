@@ -174,9 +174,11 @@ class GoogleDriveSync:
             self.logger.info(f"Found {len(media_files)} media files in Google Drive")
             
             # Track all Google Drive file paths for deletion check
+            # Normalize to absolute paths for comparison
+            local_dir_abs = str(Path(local_dir).resolve())
             gdrive_file_paths = set()
             for item in media_files:
-                gdrive_file_paths.add(os.path.join(local_dir, item['path']))
+                gdrive_file_paths.add(str(Path(os.path.join(local_dir_abs, item['path'])).resolve()))
             
             # Download or update files
             downloaded_count = 0
@@ -245,8 +247,8 @@ class GoogleDriveSync:
                     self.logger.warning(f"Skipping file outside media directory: {local_file}")
                     continue
                 
-                # Check if file exists on Google Drive
-                if local_file not in gdrive_file_paths:
+                # Check if file exists on Google Drive (compare resolved paths)
+                if str(local_file_path) not in gdrive_file_paths:
                     try:
                         self.logger.info(f"Deleting local file (not in Drive): {os.path.relpath(local_file, local_dir)}")
                         os.remove(local_file)
@@ -280,11 +282,14 @@ class GoogleDriveSync:
                     except ValueError:
                         continue
                     
-                    # Check if directory is empty
+                    # Check if directory exists and is empty
                     try:
-                        if not os.listdir(dir_path):
+                        if os.path.exists(dir_path) and not os.listdir(dir_path):
                             self.logger.info(f"Removing empty directory: {os.path.relpath(dir_path, local_dir)}")
                             os.rmdir(dir_path)
+                    except FileNotFoundError:
+                        # Directory was already removed, skip silently
+                        pass
                     except Exception as e:
                         self.logger.error(f"Error removing directory {dir_path}: {e}")
                         
