@@ -154,6 +154,7 @@ class GoogleDriveSync:
         try:
             folder_id = self.config['google_drive']['folder_id']
             local_dir = self.config['google_drive']['local_media_dir']
+            delete_local_when_removed = self.config['google_drive'].get('delete_local_when_removed', True)
             
             if folder_id == "YOUR_FOLDER_ID_HERE":
                 self.logger.error("Please configure the Google Drive folder ID in config.yaml")
@@ -171,6 +172,13 @@ class GoogleDriveSync:
             media_files = [item for item in items if not item['is_folder'] and self.is_media_file(item['title'])]
             
             self.logger.info(f"Found {len(media_files)} media files in Google Drive")
+            
+            # Track all Google Drive file paths for deletion check
+            # Normalize to absolute paths for comparison
+            gdrive_file_paths = set()
+            for item in media_files:
+                # Join local_dir with relative path, then resolve to absolute path
+                gdrive_file_paths.add(str((Path(local_dir) / item['path']).resolve()))
             
             # Download or update files
             downloaded_count = 0
@@ -199,12 +207,94 @@ class GoogleDriveSync:
                 except Exception as e:
                     self.logger.error(f"Error downloading {item['path']}: {e}")
             
-            self.logger.info(f"Sync complete. Downloaded: {downloaded_count}, Skipped: {skipped_count}")
+            # Delete local files that are no longer on Google Drive
+            deleted_count = 0
+            if delete_local_when_removed:
+                deleted_count = self.delete_orphaned_files(local_dir, gdrive_file_paths)
+            
+            self.logger.info(f"Sync complete. Downloaded: {downloaded_count}, Skipped: {skipped_count}, Deleted: {deleted_count}")
             return True
             
         except Exception as e:
             self.logger.error(f"Error during sync: {e}")
             return False
+    
+    def delete_orphaned_files(self, local_dir, gdrive_file_paths):
+        """Delete local files that no longer exist on Google Drive"""
+        try:
+            deleted_count = 0
+            local_dir_path = Path(local_dir).resolve()
+            
+            self.logger.info("Checking for files to delete...")
+            
+            # Get all local media files
+            local_files = []
+            for root, dirs, files in os.walk(local_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    # Only consider media files
+                    if self.is_media_file(file):
+                        local_files.append(file_path)
+            
+            # Find files to delete (exist locally but not on Google Drive)
+            for local_file in local_files:
+                local_file_path = Path(local_file).resolve()
+                
+                # Safety check: ensure file is within local_media_dir
+                try:
+                    local_file_path.relative_to(local_dir_path)
+                except ValueError:
+                    self.logger.warning(f"Skipping file outside media directory: {local_file}")
+                    continue
+                
+                # Check if file exists on Google Drive (compare resolved paths)
+                if str(local_file_path) not in gdrive_file_paths:
+                    try:
+                        self.logger.info(f"Deleting local file (not in Drive): {os.path.relpath(local_file, local_dir)}")
+                        os.remove(local_file)
+                        deleted_count += 1
+                    except Exception as e:
+                        self.logger.error(f"Error deleting {local_file}: {e}")
+            
+            # Clean up empty directories
+            self.cleanup_empty_directories(local_dir)
+            
+            return deleted_count
+            
+        except Exception as e:
+            self.logger.error(f"Error during orphaned file deletion: {e}")
+            return 0
+    
+    def cleanup_empty_directories(self, local_dir):
+        """Remove empty directories in the media directory"""
+        try:
+            local_dir_path = Path(local_dir).resolve()
+            
+            # Walk from bottom to top to handle nested directories
+            for root, dirs, files in os.walk(local_dir, topdown=False):
+                for dir_name in dirs:
+                    dir_path = os.path.join(root, dir_name)
+                    dir_path_obj = Path(dir_path).resolve()
+                    
+                    # Safety check: ensure directory is within local_media_dir
+                    try:
+                        dir_path_obj.relative_to(local_dir_path)
+                    except ValueError:
+                        continue
+                    
+                    # Check if directory exists and is empty
+                    try:
+                        if os.path.exists(dir_path) and not os.listdir(dir_path):
+                            self.logger.info(f"Removing empty directory: {os.path.relpath(dir_path, local_dir)}")
+                            os.rmdir(dir_path)
+                    except FileNotFoundError:
+                        # Directory was already removed, skip silently
+                        pass
+                    except Exception as e:
+                        self.logger.error(f"Error removing directory {dir_path}: {e}")
+                        
+        except Exception as e:
+            self.logger.error(f"Error during empty directory cleanup: {e}")
     
     def run(self):
         """Main run loop - sync files at configured interval"""
