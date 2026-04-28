@@ -61,7 +61,32 @@ class GoogleDriveSync:
     def authenticate(self):
         """Authenticate with Google Drive using OAuth2"""
         try:
-            client_secrets = self.config['google_drive']['client_secrets_file']
+            drive_cfg = self.config['google_drive']
+            auth_mode = drive_cfg.get('auth_mode', 'oauth').lower()
+            client_secrets = drive_cfg.get('client_secrets_file', 'client_secrets.json')
+            service_account_file = drive_cfg.get('service_account_file', 'service_account.json')
+            credentials_file = drive_cfg.get('credentials_file', 'credentials.json')
+
+            # Fully unattended mode: Google service account credentials.
+            if auth_mode == 'service_account':
+                if not os.path.exists(service_account_file):
+                    self.logger.error(f"Service account file not found: {service_account_file}")
+                    self.logger.error("Set google_drive.service_account_file to a valid JSON key file")
+                    return False
+
+                settings = {
+                    "client_config_backend": "service",
+                    "service_config": {
+                        "client_json_file_path": service_account_file
+                    },
+                    "oauth_scope": ["https://www.googleapis.com/auth/drive.readonly"]
+                }
+
+                gauth = GoogleAuth(settings=settings)
+                gauth.ServiceAuth()
+                self.drive = GoogleDrive(gauth)
+                self.logger.info("Successfully authenticated with Google Drive (service account)")
+                return True
             
             if not os.path.exists(client_secrets):
                 self.logger.error(f"Client secrets file not found: {client_secrets}")
@@ -74,7 +99,7 @@ class GoogleDriveSync:
                 "client_config_file": client_secrets,
                 "save_credentials": True,
                 "save_credentials_backend": "file",
-                "save_credentials_file": "credentials.json",
+                "save_credentials_file": credentials_file,
                 "get_refresh_token": True,
                 "oauth_scope": ["https://www.googleapis.com/auth/drive.readonly"]
             }
@@ -82,12 +107,13 @@ class GoogleDriveSync:
             gauth = GoogleAuth(settings=settings)
             
             # Try to load saved credentials
-            gauth.LoadCredentialsFile("credentials.json")
+            gauth.LoadCredentialsFile(credentials_file)
             
             if gauth.credentials is None:
                 # Authenticate if credentials don't exist
                 self.logger.info("No saved credentials found. Starting OAuth2 flow...")
-                gauth.LocalWebserverAuth()
+                # CommandLineAuth works even on headless systems over SSH.
+                gauth.CommandLineAuth()
             elif gauth.access_token_expired:
                 # Refresh if expired
                 self.logger.info("Access token expired. Refreshing...")
@@ -97,7 +123,7 @@ class GoogleDriveSync:
                 gauth.Authorize()
             
             # Save credentials for next run
-            gauth.SaveCredentialsFile("credentials.json")
+            gauth.SaveCredentialsFile(credentials_file)
             
             self.drive = GoogleDrive(gauth)
             self.logger.info("Successfully authenticated with Google Drive")

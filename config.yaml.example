@@ -15,6 +15,15 @@ google_drive:
   
   # OAuth2 credentials file (get from Google Cloud Console)
   client_secrets_file: "client_secrets.json"
+
+  # Auth mode: "oauth" (interactive first login) or "service_account" (fully unattended)
+  auth_mode: "oauth"
+
+  # Optional path for saved OAuth credentials (used when auth_mode is "oauth")
+  credentials_file: "credentials.json"
+
+  # Service account JSON key file (used when auth_mode is "service_account")
+  service_account_file: "service_account.json"
   
   # Delete local files when removed from Google Drive
   delete_local_when_removed: true
