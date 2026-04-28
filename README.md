@@ -40,24 +40,32 @@ A complete media player application for Raspberry Pi 5 that plays photos and vid
 
 ### Quick Install
 
-1. Clone this repository:
+Run one command on the Raspberry Pi:
+
 ```bash
-cd ~
-git clone https://github.com/Kaiden-Buchter/raspberry-pi-media-player.git
-cd raspberry-pi-media-player
+curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/bootstrap.sh | bash
 ```
 
-2. Run the installation script:
+This installs dependencies and enables systemd autostart on reboot.
+
+Optional: set your Drive folder during install:
+
 ```bash
-chmod +x install.sh
-./install.sh
+DRIVE_FOLDER="https://drive.google.com/drive/folders/YOUR_FOLDER_ID" \
+curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/bootstrap.sh | bash
 ```
 
-The installation script will:
+Optional: disable autostart during install:
+
+```bash
+AUTOSTART=0 curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/bootstrap.sh | bash
+```
+
+The installer will:
 - Update system packages
-- Install required system dependencies (SDL2, OpenCV, FFmpeg, HEIF libraries)
+- Install required system dependencies (SDL2, FFmpeg, HEIF tools)
 - Create a Python virtual environment
-- Install all Python dependencies
+- Install Python dependencies in `venv`
 - Create configuration files
 - Set up the media directory
 

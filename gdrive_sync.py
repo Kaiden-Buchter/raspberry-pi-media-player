@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import logging
+import re
 import yaml
 from pathlib import Path
 from pydrive2.auth import GoogleAuth
@@ -140,25 +141,50 @@ class GoogleDriveSync:
             
         except Exception as e:
             self.logger.error(f"Error getting folder contents: {e}")
+            self.logger.error(
+                "If you see 'File not found', verify `google_drive.folder_id` is correct and shared with the authenticated Google account."
+            )
             return []
+
+    def normalize_folder_id(self, folder_value):
+        """Accept either raw folder ID or full Google Drive folder URL."""
+        if not folder_value:
+            return folder_value
+
+        value = str(folder_value).strip()
+
+        # Raw IDs are typically URL-safe base64-like strings.
+        if re.fullmatch(r"[A-Za-z0-9_-]{10,}", value):
+            return value
+
+        # Handle full URLs like: https://drive.google.com/drive/folders/<ID>?...
+        match = re.search(r"/folders/([A-Za-z0-9_-]+)", value)
+        if match:
+            return match.group(1)
+
+        return value
     
     def is_media_file(self, filename):
         """Check if a file is a supported media file"""
         ext = os.path.splitext(filename.lower())[1]
-        video_formats = self.config['media_player']['video_formats']
-        image_formats = self.config['media_player']['image_formats']
+        video_formats = [fmt.lower() for fmt in self.config['media_player']['video_formats']]
+        image_formats = [fmt.lower() for fmt in self.config['media_player']['image_formats']]
         return ext in video_formats or ext in image_formats
     
     def sync_files(self):
         """Sync media files from Google Drive to local storage"""
         try:
-            folder_id = self.config['google_drive']['folder_id']
+            raw_folder_id = self.config['google_drive']['folder_id']
+            folder_id = self.normalize_folder_id(raw_folder_id)
             local_dir = self.config['google_drive']['local_media_dir']
             delete_local_when_removed = self.config['google_drive'].get('delete_local_when_removed', True)
             
             if folder_id == "YOUR_FOLDER_ID_HERE":
                 self.logger.error("Please configure the Google Drive folder ID in config.yaml")
                 return False
+
+            if folder_id != raw_folder_id:
+                self.logger.info(f"Parsed folder ID from URL: {folder_id}")
             
             self.logger.info(f"Starting sync from Google Drive folder: {folder_id}")
             

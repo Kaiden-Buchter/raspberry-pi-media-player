@@ -8,20 +8,28 @@ This is a condensed guide to get your Raspberry Pi Media Player up and running q
 - Internet connection
 - Google account with access to Google Drive
 
-## Installation (5 minutes)
+## Installation (One Command)
 
 ```bash
-# Clone the repository
-cd ~
-git clone https://github.com/Kaiden-Buchter/raspberry-pi-media-player.git
-cd raspberry-pi-media-player
-
-# Run installation
-chmod +x install.sh
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/bootstrap.sh | bash
 ```
 
-Wait for installation to complete (may take 10-15 minutes on first run).
+This installs dependencies and enables autostart on reboot.
+
+Optional: set Google Drive folder during install:
+
+```bash
+DRIVE_FOLDER="https://drive.google.com/drive/folders/YOUR_FOLDER_ID" \
+curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/bootstrap.sh | bash
+```
+
+Optional: disable autostart during install:
+
+```bash
+AUTOSTART=0 curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/bootstrap.sh | bash
+```
+
+Wait for installation to complete (may take 10-20 minutes on first run).
 
 ## Google Drive Setup (10 minutes)
 

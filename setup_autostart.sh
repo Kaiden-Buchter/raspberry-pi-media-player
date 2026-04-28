@@ -4,6 +4,20 @@
 
 set -e
 
+ASSUME_YES=0
+for arg in "$@"; do
+    case "$arg" in
+        --yes|-y)
+            ASSUME_YES=1
+            ;;
+        *)
+            echo "Unknown argument: $arg"
+            echo "Usage: ./setup_autostart.sh [--yes|-y]"
+            exit 1
+            ;;
+    esac
+done
+
 echo "=========================================="
 echo "Systemd Service Installation"
 echo "=========================================="
@@ -35,10 +49,14 @@ fi
 if [ ! -f "client_secrets.json" ]; then
     echo "Warning: client_secrets.json not found!"
     echo "You need this file for Google Drive sync."
-    read -p "Continue anyway? (y/n) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
+    if [ "$ASSUME_YES" -eq 1 ]; then
+        echo "Continuing because --yes was provided."
+    else
+        read -p "Continue anyway? (y/n) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
     fi
 fi
 

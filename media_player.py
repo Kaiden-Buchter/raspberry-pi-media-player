@@ -10,13 +10,20 @@ import sys
 import time
 import random
 import logging
+import tempfile
+import subprocess
+import shutil
 import yaml
 import cv2
 import numpy as np
 import pygame
 from pathlib import Path
 from PIL import Image
-import pillow_heif
+
+try:
+    import pillow_heif
+except ImportError:
+    pillow_heif = None
 
 class MediaPlayer:
     def __init__(self, config_path='config.yaml'):
@@ -26,8 +33,11 @@ class MediaPlayer:
         self.media_files = []
         self.current_index = 0
         
-        # Register HEIF opener with PIL
-        pillow_heif.register_heif_opener()
+        # Register HEIF opener with PIL when optional dependency is available.
+        if pillow_heif is not None:
+            pillow_heif.register_heif_opener()
+        else:
+            print("Warning: pillow-heif not installed; HEIF/HEIC images will be skipped.")
         
         # Initialize pygame
         pygame.init()
@@ -193,8 +203,47 @@ class MediaPlayer:
             return img_array
             
         except Exception as e:
+            ext = os.path.splitext(image_path)[1].lower()
+            if ext in ['.heic', '.heif']:
+                fallback = self.load_heic_with_heif_convert(image_path)
+                if fallback is not None:
+                    return fallback
             self.logger.error(f"Error loading image {image_path}: {e}")
             return None
+
+    def load_heic_with_heif_convert(self, image_path):
+        """Fallback HEIC decoder using system `heif-convert` when pillow-heif is unavailable."""
+        if shutil.which('heif-convert') is None:
+            self.logger.error(
+                "HEIC support unavailable: install `pillow-heif` or `libheif-examples` (heif-convert)."
+            )
+            return None
+
+        tmp_file = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
+                tmp_file = tmp.name
+
+            result = subprocess.run(
+                ['heif-convert', image_path, tmp_file],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if result.returncode != 0:
+                self.logger.error(f"heif-convert failed for {image_path}: {result.stderr.strip()}")
+                return None
+
+            decoded = cv2.imread(tmp_file)
+            if decoded is None:
+                self.logger.error(f"OpenCV could not read converted HEIC file: {image_path}")
+            return decoded
+        except Exception as e:
+            self.logger.error(f"HEIC fallback decode failed for {image_path}: {e}")
+            return None
+        finally:
+            if tmp_file and os.path.exists(tmp_file):
+                os.remove(tmp_file)
     
     def resize_image(self, image, target_width, target_height):
         """Resize image to fit screen while maintaining aspect ratio"""
