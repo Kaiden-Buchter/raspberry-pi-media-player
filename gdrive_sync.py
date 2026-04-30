@@ -305,11 +305,7 @@ class GoogleDriveSync:
                 try:
                     # Download file
                     self.logger.info(f"Downloading: {item['path']} -> {os.path.relpath(local_path, local_dir)}")
-                    if self.auth_mode == 'service_account':
-                        self.download_file_api(item['id'], local_path)
-                    else:
-                        file_obj = self.drive.CreateFile({'id': item['id']})
-                        file_obj.GetContentFile(local_path)
+                    self.download_file_api(item['id'], local_path)
                     downloaded_count += 1
                 except Exception as e:
                     self.logger.error(f"Error downloading {item['path']}: {e}")
