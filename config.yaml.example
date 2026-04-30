@@ -13,14 +13,14 @@ google_drive:
   # Sync interval in minutes
   sync_interval: 15
   
-  # OAuth2 credentials file (get from Google Cloud Console)
+  # OAuth2 client secret JSON (use a Desktop app client from Google Cloud Console)
   client_secrets_file: "client_secrets.json"
 
   # Auth mode: "oauth" (interactive first login) or "service_account" (fully unattended)
   auth_mode: "oauth"
 
   # Optional path for saved OAuth credentials (used when auth_mode is "oauth")
-  credentials_file: "credentials.json"
+  credentials_file: "token.json"
 
   # Service account JSON key file (used when auth_mode is "service_account")
   service_account_file: "service_account.json"

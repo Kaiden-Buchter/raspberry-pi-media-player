@@ -13,19 +13,21 @@ import io
 import re
 import yaml
 from pathlib import Path
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials as UserCredentials
 from google.oauth2 import service_account as google_service_account
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 from datetime import datetime
+
+SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
 class GoogleDriveSync:
     def __init__(self, config_path='config.yaml'):
         """Initialize the Google Drive sync client"""
         self.config = self.load_config(config_path)
         self.setup_logging()
-        self.drive = None
         self.service = None
         self.auth_mode = self.config.get('google_drive', {}).get('auth_mode', 'oauth').lower()
         
@@ -70,7 +72,7 @@ class GoogleDriveSync:
             drive_cfg = self.config['google_drive']
             client_secrets = drive_cfg.get('client_secrets_file', 'client_secrets.json')
             service_account_file = drive_cfg.get('service_account_file', 'service_account.json')
-            credentials_file = drive_cfg.get('credentials_file', 'credentials.json')
+            credentials_file = drive_cfg.get('credentials_file', 'token.json')
 
             # Fully unattended mode: Google service account credentials.
             if self.auth_mode == 'service_account':
@@ -79,10 +81,9 @@ class GoogleDriveSync:
                     self.logger.error("Set google_drive.service_account_file to a valid JSON key file")
                     return False
 
-                scopes = ["https://www.googleapis.com/auth/drive.readonly"]
                 credentials = google_service_account.Credentials.from_service_account_file(
                     service_account_file,
-                    scopes=scopes,
+                    scopes=SCOPES,
                 )
                 self.service = build("drive", "v3", credentials=credentials, cache_discovery=False)
                 self.logger.info("Successfully authenticated with Google Drive (service account)")
@@ -91,41 +92,25 @@ class GoogleDriveSync:
             if not os.path.exists(client_secrets):
                 self.logger.error(f"Client secrets file not found: {client_secrets}")
                 self.logger.error("Please download OAuth2 credentials from Google Cloud Console")
+                self.logger.error("Use an OAuth client of type 'Desktop app' for the browser login flow")
                 return False
-            
-            # Create settings for PyDrive2
-            settings = {
-                "client_config_backend": "file",
-                "client_config_file": client_secrets,
-                "save_credentials": True,
-                "save_credentials_backend": "file",
-                "save_credentials_file": credentials_file,
-                "get_refresh_token": True,
-                "oauth_scope": ["https://www.googleapis.com/auth/drive.readonly"]
-            }
-            
-            gauth = GoogleAuth(settings=settings)
-            
-            # Try to load saved credentials
-            gauth.LoadCredentialsFile(credentials_file)
-            
-            if gauth.credentials is None:
-                # Authenticate if credentials don't exist
-                self.logger.info("No saved credentials found. Starting OAuth2 flow...")
-                # CommandLineAuth works even on headless systems over SSH.
-                gauth.CommandLineAuth()
-            elif gauth.access_token_expired:
-                # Refresh if expired
-                self.logger.info("Access token expired. Refreshing...")
-                gauth.Refresh()
-            else:
-                # Initialize with existing credentials
-                gauth.Authorize()
-            
-            # Save credentials for next run
-            gauth.SaveCredentialsFile(credentials_file)
-            
-            self.drive = GoogleDrive(gauth)
+
+            creds = None
+            if os.path.exists(credentials_file):
+                creds = UserCredentials.from_authorized_user_file(credentials_file, SCOPES)
+
+            if creds and creds.expired and creds.refresh_token:
+                self.logger.info("OAuth token expired; refreshing...")
+                creds.refresh(Request())
+            elif not creds or not creds.valid:
+                self.logger.info("No valid OAuth token found. Starting browser login flow...")
+                flow = InstalledAppFlow.from_client_secrets_file(client_secrets, SCOPES)
+                creds = flow.run_local_server(port=0, prompt='consent')
+
+            with open(credentials_file, 'w') as token_file:
+                token_file.write(creds.to_json())
+
+            self.service = build("drive", "v3", credentials=creds, cache_discovery=False)
             self.logger.info("Successfully authenticated with Google Drive")
             return True
             
@@ -136,37 +121,7 @@ class GoogleDriveSync:
     def get_folder_contents(self, folder_id, path=''):
         """Recursively get all files and folders from Google Drive"""
         try:
-            if self.auth_mode == 'service_account':
-                return self.get_folder_contents_api(folder_id, path)
-
-            # Query for all items in the folder
-            query = f"'{folder_id}' in parents and trashed=false"
-            file_list = self.drive.ListFile({'q': query}).GetList()
-            
-            items = []
-            for item in file_list:
-                item_info = {
-                    'id': item['id'],
-                    'title': item['title'],
-                    'mimeType': item['mimeType'],
-                    'path': os.path.join(path, item['title'])
-                }
-                
-                # If it's a folder, recursively get its contents
-                if item['mimeType'] == 'application/vnd.google-apps.folder':
-                    item_info['is_folder'] = True
-                    items.append(item_info)
-                    # Recursively get folder contents
-                    subfolder_items = self.get_folder_contents(
-                        item['id'], 
-                        os.path.join(path, item['title'])
-                    )
-                    items.extend(subfolder_items)
-                else:
-                    item_info['is_folder'] = False
-                    items.append(item_info)
-            
-            return items
+            return self.get_folder_contents_api(folder_id, path)
             
         except Exception as e:
             self.logger.error(f"Error getting folder contents: {e}")
