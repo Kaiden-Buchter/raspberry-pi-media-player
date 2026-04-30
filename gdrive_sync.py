@@ -232,11 +232,45 @@ class GoogleDriveSync:
         return value
     
     def is_media_file(self, filename):
-        """Check if a file is a supported media file"""
+        """Check if a file is a supported media file."""
+        return self.is_media_item(filename, None)
+
+    def is_media_item(self, filename, mime_type=None):
+        """Check if a Drive item or file path is a supported media file."""
         ext = os.path.splitext(filename.lower())[1]
         video_formats = [fmt.lower() for fmt in self.config['media_player']['video_formats']]
         image_formats = [fmt.lower() for fmt in self.config['media_player']['image_formats']]
-        return ext in video_formats or ext in image_formats
+
+        if ext in video_formats or ext in image_formats:
+            return True
+
+        if mime_type:
+            mime_type = mime_type.lower()
+            if mime_type.startswith('image/') or mime_type.startswith('video/'):
+                return True
+
+        return False
+
+    def mime_type_to_extension(self, mime_type, filename=''):
+        """Pick a usable file extension for a downloaded Drive item."""
+        name_ext = os.path.splitext(filename)[1]
+        if name_ext:
+            return name_ext
+
+        mime_type = (mime_type or '').lower()
+        mime_to_ext = {
+            'image/jpeg': '.jpg',
+            'image/jpg': '.jpg',
+            'image/png': '.png',
+            'image/gif': '.gif',
+            'image/heic': '.heic',
+            'image/heif': '.heif',
+            'video/mp4': '.mp4',
+            'video/quicktime': '.mov',
+            'video/x-msvideo': '.avi',
+            'video/x-matroska': '.mkv',
+        }
+        return mime_to_ext.get(mime_type, '')
     
     def sync_files(self):
         """Sync media files from Google Drive to local storage"""
@@ -262,9 +296,16 @@ class GoogleDriveSync:
             items = self.get_folder_contents(folder_id)
             
             # Filter for media files only
-            media_files = [item for item in items if not item['is_folder'] and self.is_media_file(item['title'])]
+            media_files = [
+                item for item in items
+                if not item['is_folder'] and self.is_media_item(item['title'], item.get('mimeType'))
+            ]
             
             self.logger.info(f"Found {len(media_files)} media files in Google Drive")
+            if not media_files and items:
+                self.logger.info("Drive items found, but none matched media filters. Listing discovered item names and MIME types:")
+                for item in items[:25]:
+                    self.logger.info(f" - {item['path']} ({item.get('mimeType', 'unknown')})")
             
             # Track all Google Drive file paths for deletion check
             # Normalize to absolute paths for comparison
@@ -279,6 +320,12 @@ class GoogleDriveSync:
             
             for item in media_files:
                 local_path = os.path.join(local_dir, item['path'])
+                local_ext = os.path.splitext(local_path)[1]
+                if not local_ext:
+                    inferred_ext = self.mime_type_to_extension(item.get('mimeType'), item['title'])
+                    if inferred_ext:
+                        local_path = local_path + inferred_ext
+
                 local_dir_path = os.path.dirname(local_path)
                 
                 # Create subdirectories as needed
@@ -293,7 +340,7 @@ class GoogleDriveSync:
                 
                 try:
                     # Download file
-                    self.logger.info(f"Downloading: {item['path']}")
+                    self.logger.info(f"Downloading: {item['path']} -> {os.path.relpath(local_path, local_dir)}")
                     if self.auth_mode == 'service_account':
                         self.download_file_api(item['id'], local_path)
                     else:
