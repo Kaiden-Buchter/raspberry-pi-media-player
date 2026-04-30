@@ -179,11 +179,13 @@ class GoogleDriveSync:
         """Recursively get folder contents using the Google Drive API."""
         items = []
         page_token = None
+        total_seen = 0
 
         while True:
             response = self.service.files().list(
                 q=f"'{folder_id}' in parents and trashed=false",
                 spaces='drive',
+                corpora='allDrives',
                 fields='nextPageToken, files(id, name, mimeType)',
                 pageToken=page_token,
                 pageSize=1000,
@@ -191,7 +193,10 @@ class GoogleDriveSync:
                 includeItemsFromAllDrives=True,
             ).execute()
 
-            for item in response.get('files', []):
+            page_files = response.get('files', [])
+            total_seen += len(page_files)
+
+            for item in page_files:
                 item_info = {
                     'id': item['id'],
                     'title': item['name'],
@@ -210,6 +215,9 @@ class GoogleDriveSync:
             page_token = response.get('nextPageToken')
             if not page_token:
                 break
+
+        if path == '':
+            self.logger.info(f"Drive API returned {total_seen} direct child items for folder {folder_id}")
 
         return items
 
@@ -294,6 +302,7 @@ class GoogleDriveSync:
             
             # Get all files from Google Drive
             items = self.get_folder_contents(folder_id)
+            self.logger.info(f"Total Drive items discovered (including subfolders): {len(items)}")
             
             # Filter for media files only
             media_files = [
