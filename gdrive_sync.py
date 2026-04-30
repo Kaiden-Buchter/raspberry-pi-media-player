@@ -9,11 +9,15 @@ import os
 import sys
 import time
 import logging
+import io
 import re
 import yaml
 from pathlib import Path
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
+from google.oauth2 import service_account as google_service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload
 from datetime import datetime
 
 class GoogleDriveSync:
@@ -22,6 +26,8 @@ class GoogleDriveSync:
         self.config = self.load_config(config_path)
         self.setup_logging()
         self.drive = None
+        self.service = None
+        self.auth_mode = self.config.get('google_drive', {}).get('auth_mode', 'oauth').lower()
         
     def load_config(self, config_path):
         """Load configuration from YAML file"""
@@ -62,29 +68,23 @@ class GoogleDriveSync:
         """Authenticate with Google Drive using OAuth2"""
         try:
             drive_cfg = self.config['google_drive']
-            auth_mode = drive_cfg.get('auth_mode', 'oauth').lower()
             client_secrets = drive_cfg.get('client_secrets_file', 'client_secrets.json')
             service_account_file = drive_cfg.get('service_account_file', 'service_account.json')
             credentials_file = drive_cfg.get('credentials_file', 'credentials.json')
 
             # Fully unattended mode: Google service account credentials.
-            if auth_mode == 'service_account':
+            if self.auth_mode == 'service_account':
                 if not os.path.exists(service_account_file):
                     self.logger.error(f"Service account file not found: {service_account_file}")
                     self.logger.error("Set google_drive.service_account_file to a valid JSON key file")
                     return False
 
-                settings = {
-                    "client_config_backend": "service",
-                    "service_config": {
-                        "client_json_file_path": service_account_file
-                    },
-                    "oauth_scope": ["https://www.googleapis.com/auth/drive.readonly"]
-                }
-
-                gauth = GoogleAuth(settings=settings)
-                gauth.ServiceAuth()
-                self.drive = GoogleDrive(gauth)
+                scopes = ["https://www.googleapis.com/auth/drive.readonly"]
+                credentials = google_service_account.Credentials.from_service_account_file(
+                    service_account_file,
+                    scopes=scopes,
+                )
+                self.service = build("drive", "v3", credentials=credentials, cache_discovery=False)
                 self.logger.info("Successfully authenticated with Google Drive (service account)")
                 return True
             
@@ -136,6 +136,9 @@ class GoogleDriveSync:
     def get_folder_contents(self, folder_id, path=''):
         """Recursively get all files and folders from Google Drive"""
         try:
+            if self.auth_mode == 'service_account':
+                return self.get_folder_contents_api(folder_id, path)
+
             # Query for all items in the folder
             query = f"'{folder_id}' in parents and trashed=false"
             file_list = self.drive.ListFile({'q': query}).GetList()
@@ -172,12 +175,50 @@ class GoogleDriveSync:
             )
             return []
 
+    def get_folder_contents_api(self, folder_id, path=''):
+        """Recursively get folder contents using the Google Drive API."""
+        items = []
+        page_token = None
+
+        while True:
+            response = self.service.files().list(
+                q=f"'{folder_id}' in parents and trashed=false",
+                spaces='drive',
+                fields='nextPageToken, files(id, name, mimeType)',
+                pageToken=page_token,
+                pageSize=1000,
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+            ).execute()
+
+            for item in response.get('files', []):
+                item_info = {
+                    'id': item['id'],
+                    'title': item['name'],
+                    'mimeType': item['mimeType'],
+                    'path': os.path.join(path, item['name'])
+                }
+
+                if item['mimeType'] == 'application/vnd.google-apps.folder':
+                    item_info['is_folder'] = True
+                    items.append(item_info)
+                    items.extend(self.get_folder_contents_api(item['id'], os.path.join(path, item['name'])))
+                else:
+                    item_info['is_folder'] = False
+                    items.append(item_info)
+
+            page_token = response.get('nextPageToken')
+            if not page_token:
+                break
+
+        return items
+
     def normalize_folder_id(self, folder_value):
         """Accept either raw folder ID or full Google Drive folder URL."""
         if not folder_value:
             return folder_value
 
-        value = str(folder_value).strip()
+        value = str(folder_value).strip().strip('/')
 
         # Raw IDs are typically URL-safe base64-like strings.
         if re.fullmatch(r"[A-Za-z0-9_-]{10,}", value):
@@ -253,8 +294,11 @@ class GoogleDriveSync:
                 try:
                     # Download file
                     self.logger.info(f"Downloading: {item['path']}")
-                    file_obj = self.drive.CreateFile({'id': item['id']})
-                    file_obj.GetContentFile(local_path)
+                    if self.auth_mode == 'service_account':
+                        self.download_file_api(item['id'], local_path)
+                    else:
+                        file_obj = self.drive.CreateFile({'id': item['id']})
+                        file_obj.GetContentFile(local_path)
                     downloaded_count += 1
                 except Exception as e:
                     self.logger.error(f"Error downloading {item['path']}: {e}")
@@ -270,6 +314,18 @@ class GoogleDriveSync:
         except Exception as e:
             self.logger.error(f"Error during sync: {e}")
             return False
+
+    def download_file_api(self, file_id, local_path):
+        """Download a file using the Google Drive API."""
+        request = self.service.files().get_media(fileId=file_id, supportsAllDrives=True)
+        fh = io.FileIO(local_path, 'wb')
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        try:
+            while not done:
+                _, done = downloader.next_chunk()
+        finally:
+            fh.close()
     
     def delete_orphaned_files(self, local_dir, gdrive_file_paths):
         """Delete local files that no longer exist on Google Drive"""
