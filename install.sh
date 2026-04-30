@@ -70,16 +70,48 @@ if [[ ! -f "config.yaml" ]]; then
 fi
 mkdir -p media
 
-if [[ -n "${DRIVE_FOLDER:-}" ]]; then
+if [[ -n "${SERVICE_ACCOUNT_FILE:-}" ]]; then
+    if [[ -f "${SERVICE_ACCOUNT_FILE}" ]]; then
+        cp "${SERVICE_ACCOUNT_FILE}" service_account.json
+        chmod 600 service_account.json
+        echo "Copied service account key from SERVICE_ACCOUNT_FILE"
+    else
+        echo "Error: SERVICE_ACCOUNT_FILE does not exist: ${SERVICE_ACCOUNT_FILE}"
+        exit 1
+    fi
+fi
+
+if [[ -n "${SERVICE_ACCOUNT_JSON_B64:-}" ]]; then
+    if command -v base64 >/dev/null 2>&1; then
+        printf '%s' "${SERVICE_ACCOUNT_JSON_B64}" | base64 -d > service_account.json
+        chmod 600 service_account.json
+        echo "Wrote service_account.json from SERVICE_ACCOUNT_JSON_B64"
+    else
+        echo "Error: base64 command not found; cannot decode SERVICE_ACCOUNT_JSON_B64"
+        exit 1
+    fi
+fi
+
+if [[ -n "${DRIVE_FOLDER:-}" || -f "service_account.json" ]]; then
     python - <<'PY'
 import yaml
 from pathlib import Path
+import os
 
 cfg_path = Path("config.yaml")
 cfg = yaml.safe_load(cfg_path.read_text())
-cfg.setdefault("google_drive", {})["folder_id"] = __import__("os").environ["DRIVE_FOLDER"]
+gd = cfg.setdefault("google_drive", {})
+
+if os.environ.get("DRIVE_FOLDER"):
+    gd["folder_id"] = os.environ["DRIVE_FOLDER"]
+    print("Set google_drive.folder_id from DRIVE_FOLDER")
+
+if Path("service_account.json").exists():
+    gd["auth_mode"] = "service_account"
+    gd["service_account_file"] = "service_account.json"
+    print("Enabled google_drive.auth_mode=service_account")
+
 cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
-print("Set google_drive.folder_id from DRIVE_FOLDER")
 PY
 fi
 
@@ -99,7 +131,9 @@ echo
 echo "=========================================="
 echo "Install complete"
 echo "=========================================="
-echo "1) Put OAuth credentials in client_secrets.json"
-echo "2) Set google_drive.folder_id in config.yaml (or use DRIVE_FOLDER env var)"
+echo "1) Set google_drive.folder_id in config.yaml (or use DRIVE_FOLDER env var)"
+echo "2) Use one of:"
+echo "   - OAuth: put client_secrets.json in project root"
+echo "   - Headless: provide SERVICE_ACCOUNT_FILE or SERVICE_ACCOUNT_JSON_B64"
 echo "3) Run: source venv/bin/activate && python3 gdrive_sync.py"
 echo "4) Run: source venv/bin/activate && python3 media_player.py"

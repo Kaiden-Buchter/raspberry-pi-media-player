@@ -3,6 +3,7 @@
 # Usage examples:
 #   curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/bootstrap.sh | bash
 #   DRIVE_FOLDER="https://drive.google.com/drive/folders/..." curl -fsSL ... | bash
+#   DRIVE_FOLDER="https://drive.google.com/drive/folders/..." SERVICE_ACCOUNT_FILE="$HOME/service-account.json" curl -fsSL ... | bash
 
 set -euo pipefail
 
