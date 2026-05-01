@@ -48,13 +48,24 @@ DRIVE_FOLDER="https://drive.google.com/drive/folders/YOUR_FOLDER_ID" \
 curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
 ```
 
+**Note:** `DRIVE_FOLDER` accepts both full URLs and raw folder IDs:
+```bash
+# Full Drive URL (recommended - just copy from browser):
+DRIVE_FOLDER="https://drive.google.com/drive/folders/1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa" ./setup.sh
+
+# Or just the raw folder ID:
+DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa" ./setup.sh
+```
+
+The script will automatically extract the ID and write it to `config.yaml`.
+
 Or with wget:
 ```bash
 DRIVE_FOLDER="https://drive.google.com/drive/folders/YOUR_FOLDER_ID" \
 wget -qO- https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
 ```
 
-Or locally after cloning:
+Or locally after cloning (recommended if curl/wget not available):
 ```bash
 git clone https://github.com/Kaiden-Buchter/raspberry-pi-media-player.git
 cd raspberry-pi-media-player

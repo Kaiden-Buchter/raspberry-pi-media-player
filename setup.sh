@@ -151,6 +151,7 @@ fi
 if [[ -n "${DRIVE_FOLDER:-}" || -f "service_account.json" ]]; then
     python - <<'PY'
 import yaml
+import re
 from pathlib import Path
 import os
 
@@ -159,8 +160,19 @@ cfg = yaml.safe_load(cfg_path.read_text())
 gd = cfg.setdefault("google_drive", {})
 
 if os.environ.get("DRIVE_FOLDER"):
-    gd["folder_id"] = os.environ["DRIVE_FOLDER"]
-    print("  - Set google_drive.folder_id from DRIVE_FOLDER")
+    folder_value = os.environ["DRIVE_FOLDER"].strip().strip('/')
+    
+    # Extract folder ID from URL if needed
+    # Handle full URLs like: https://drive.google.com/drive/folders/<ID>?...
+    match = re.search(r"/folders/([A-Za-z0-9_-]+)", folder_value)
+    if match:
+        folder_id = match.group(1)
+    else:
+        # Assume it's already a raw ID
+        folder_id = folder_value
+    
+    gd["folder_id"] = folder_id
+    print(f"  - Set google_drive.folder_id = {folder_id}")
 
 if Path("service_account.json").exists():
     gd["auth_mode"] = "service_account"
