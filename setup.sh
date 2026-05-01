@@ -148,6 +148,12 @@ if [[ -n "${SERVICE_ACCOUNT_JSON_B64:-}" ]]; then
 fi
 
 # Auto-configure if service account or drive folder provided
+if [[ -n "${DRIVE_FOLDER:-}" ]]; then
+    log_step "DRIVE_FOLDER detected, configuring..."
+elif [[ -f "service_account.json" ]]; then
+    log_step "service_account.json found, configuring..."
+fi
+
 if [[ -n "${DRIVE_FOLDER:-}" || -f "service_account.json" ]]; then
     python - <<'PY'
 import yaml
