@@ -44,55 +44,72 @@ cd raspberry-pi-media-player
 
 ### Set Google Drive folder ID during install (with curl):
 
-⚠️ **Important:** Export the variable first so bash receives it:
+⚠️ **Important:** Use semicolon or newline to separate export from curl:
 
 ```bash
-export DRIVE_FOLDER="https://drive.google.com/drive/folders/YOUR_FOLDER_ID"
+export DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa"; curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
+```
+
+Or on separate lines:
+```bash
+export DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa"
 curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
 ```
 
 **Note:** `DRIVE_FOLDER` accepts both full URLs and raw folder IDs:
 ```bash
-# Full Drive URL (recommended - just copy from browser):
-export DRIVE_FOLDER="https://drive.google.com/drive/folders/1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa"
-curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
+# Full Drive URL:
+export DRIVE_FOLDER="https://drive.google.com/drive/folders/1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa"; curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
 
 # Or just the raw folder ID:
-export DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa"
-curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
+export DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa"; curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
 ```
 
 The script will automatically extract the ID and write it to `config.yaml`.
 
-Or with wget:
-```bash
-export DRIVE_FOLDER="https://drive.google.com/drive/folders/YOUR_FOLDER_ID"
-wget -qO- https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
-```
-
-**Easiest method** - locally after cloning (no export needed):
+**🎯 EASIEST METHOD** - Clone locally (no export syntax issues):
 ```bash
 git clone https://github.com/Kaiden-Buchter/raspberry-pi-media-player.git
 cd raspberry-pi-media-player
-DRIVE_FOLDER="https://drive.google.com/drive/folders/YOUR_FOLDER_ID" ./setup.sh
+DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa" ./setup.sh
+```
+
+Or with wget:
+```bash
+export DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa"; wget -qO- https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
 ```
 
 ### Disable auto-start on reboot:
 ```bash
-AUTOSTART=0 curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
+export AUTOSTART=0; curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
+```
+
+Or locally:
+```bash
+cd ~/raspberry-pi-media-player
+AUTOSTART=0 ./setup.sh
 ```
 
 ### Use service account for fully headless auth:
 ```bash
-SERVICE_ACCOUNT_FILE="/path/to/service_account.json" \
-curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
+export SERVICE_ACCOUNT_FILE="/path/to/service_account.json"; curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
 ```
 
-### Combine multiple options:
+Or locally:
 ```bash
-DRIVE_FOLDER="https://drive.google.com/drive/folders/YOUR_ID" \
-SERVICE_ACCOUNT_FILE="/path/to/service_account.json" \
-curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
+cd ~/raspberry-pi-media-player
+SERVICE_ACCOUNT_FILE="/path/to/service_account.json" ./setup.sh
+```
+
+### Combine multiple options (locally is simplest):
+```bash
+cd ~/raspberry-pi-media-player
+DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa" SERVICE_ACCOUNT_FILE="/path/to/service_account.json" ./setup.sh
+```
+
+Or with curl (use semicolons):
+```bash
+export DRIVE_FOLDER="1c0HT9qASuGHynuaiQS07PPvF5D2rUMIa"; export SERVICE_ACCOUNT_FILE="/path/to/service_account.json"; curl -fsSL https://raw.githubusercontent.com/Kaiden-Buchter/raspberry-pi-media-player/main/setup.sh | bash
 ```
 
 ---
