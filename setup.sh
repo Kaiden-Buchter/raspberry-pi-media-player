@@ -210,12 +210,25 @@ if [[ "$AUTOSTART" == "1" ]]; then
     INSTALL_DIR="$(pwd)"
     CURRENT_USER="$(whoami)"
     
+    # Create media-player target (groups all services together)
+    cat > /tmp/media-player.target << EOF
+[Unit]
+Description=Raspberry Pi Media Player Services
+Documentation=man:systemd.target(5)
+After=multi-user.target graphical.target
+Wants=gdrive-sync.service media-player.service daily-reboot.timer
+
+[Install]
+WantedBy=multi-user.target graphical.target
+EOF
+
     # Create gdrive-sync service
     cat > /tmp/gdrive-sync.service << EOF
 [Unit]
 Description=Raspberry Pi Media Player - Google Drive Sync
 After=network-online.target
 Wants=network-online.target
+PartOf=media-player.target
 
 [Service]
 Type=simple
@@ -228,7 +241,7 @@ StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=media-player.target
 EOF
 
     # Create media-player service
@@ -237,6 +250,7 @@ EOF
 Description=Raspberry Pi Media Player
 After=graphical.target gdrive-sync.service
 Wants=graphical.target
+PartOf=media-player.target
 
 [Service]
 Type=simple
@@ -251,18 +265,54 @@ StandardOutput=journal
 StandardError=journal
 
 [Install]
-WantedBy=graphical.target
+WantedBy=media-player.target
 EOF
 
+    # Create daily reboot timer (6am every day)
+    cat > /tmp/daily-reboot.timer << EOF
+[Unit]
+Description=Daily Reboot at 6am
+Documentation=man:systemd.timer(5)
+PartOf=media-player.target
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+
+[Install]
+WantedBy=media-player.target
+EOF
+
+    # Create daily reboot service
+    cat > /tmp/daily-reboot.service << EOF
+[Unit]
+Description=Reboot the system
+After=network.target
+PartOf=media-player.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/reboot
+
+[Install]
+WantedBy=media-player.target
+EOF
+
+    sudo cp /tmp/media-player.target /etc/systemd/system/
     sudo cp /tmp/gdrive-sync.service /etc/systemd/system/
     sudo cp /tmp/media-player.service /etc/systemd/system/
+    sudo cp /tmp/daily-reboot.timer /etc/systemd/system/
+    sudo cp /tmp/daily-reboot.service /etc/systemd/system/
     sudo systemctl daemon-reload
-    sudo systemctl enable gdrive-sync.service media-player.service
+    sudo systemctl enable media-player.target
+    sudo systemctl start media-player.target
     
-    log_step "Systemd services installed and enabled"
+    log_step "Media Player services installed and enabled"
+    log_step "All services grouped under: media-player.target"
     log_step "Services will start automatically on reboot"
+    log_step "System will reboot daily at 6:00 AM"
     
-    rm -f /tmp/gdrive-sync.service /tmp/media-player.service
+    rm -f /tmp/media-player.target /tmp/gdrive-sync.service /tmp/media-player.service /tmp/daily-reboot.timer /tmp/daily-reboot.service
 fi
 
 # Final summary
@@ -296,9 +346,14 @@ echo "      source venv/bin/activate"
 echo "      python3 media_player.py"
 echo
 if [[ "$AUTOSTART" == "1" ]]; then
-    echo "   6. Services will auto-start on reboot. Check status:"
+    echo "   6. All services grouped under 'media-player.target'. Check status:"
+    echo "      sudo systemctl status media-player.target"
+    echo "      sudo systemctl list-units --target=media-player.target"
+    echo
+    echo "   7. Individual service status:"
     echo "      sudo systemctl status gdrive-sync.service"
     echo "      sudo systemctl status media-player.service"
+    echo "      sudo systemctl status daily-reboot.timer"
     echo
 fi
 echo "📚 Full documentation: See SETUP.md in the project directory"

@@ -35,6 +35,7 @@ cd raspberry-pi-media-player
 - Creates media directory
 - Sets up configuration files
 - **Enables auto-start on reboot** (enabled by default)
+- **Schedules daily reboot at 6:00 AM** (enabled by default)
 
 **Installation time:** 10-20 minutes on first run (most time spent downloading packages)
 
@@ -271,35 +272,83 @@ python3 test_setup.py
 
 **Already enabled by default** during installation (unless you set `AUTOSTART=0`).
 
-To re-enable if disabled:
-```bash
-cd ~/raspberry-pi-media-player
-AUTOSTART=1 ./setup.sh
-```
+All media player services are grouped under `media-player.target` and start automatically.
 
-To disable:
+To disable auto-start:
 ```bash
-sudo systemctl disable gdrive-sync.service media-player.service
+sudo systemctl disable media-player.target
 ```
 
 To re-enable:
 ```bash
-sudo systemctl enable gdrive-sync.service media-player.service
+sudo systemctl enable media-player.target
 ```
+
+---
+
+## ⏰ Daily Reboot (6:00 AM)
+
+The system is configured to **reboot automatically every day at 6:00 AM** to maintain system health.
+
+The reboot is part of the `media-player.target` group, so it's managed with the other services.
+
+**Check reboot status:**
+```bash
+sudo systemctl status daily-reboot.timer
+sudo systemctl list-timers daily-reboot.timer
+```
+
+**Disable only the daily reboot (keep other services running):**
+```bash
+sudo systemctl disable daily-reboot.timer
+sudo systemctl stop daily-reboot.timer
+```
+
+**Re-enable:**
+```bash
+sudo systemctl enable daily-reboot.timer
+sudo systemctl start daily-reboot.timer
+```
+
+**Change reboot time:**
+```bash
+sudo systemctl edit daily-reboot.timer
+```
+
+Then edit the `OnCalendar` line (examples):
+- `06:00` = 6:00 AM
+- `03:30` = 3:30 AM
+- `20:00` = 8:00 PM
 
 ---
 
 ## 📊 Manage Services
 
-Check status:
+All services are grouped under **`media-player.target`**. You can manage them together or individually:
+
+**Manage all services at once:**
+```bash
+sudo systemctl status media-player.target
+sudo systemctl start media-player.target
+sudo systemctl stop media-player.target
+sudo systemctl restart media-player.target
+```
+
+**List all media player services:**
+```bash
+sudo systemctl list-units --target=media-player.target
+```
+
+**Manage individual services:**
 ```bash
 sudo systemctl status gdrive-sync.service
 sudo systemctl status media-player.service
+sudo systemctl status daily-reboot.timer
 ```
 
-Start/stop manually:
+**Start/stop individual services:**
 ```bash
-sudo systemctl start gdrive-sync.service media-player.service
+sudo systemctl start gdrive-sync.service
 sudo systemctl stop media-player.service
 ```
 
@@ -307,6 +356,11 @@ View recent logs:
 ```bash
 sudo journalctl -u gdrive-sync.service -n 50
 sudo journalctl -u media-player.service -n 50
+```
+
+View reboot timer events:
+```bash
+sudo systemctl list-timers daily-reboot.timer
 ```
 
 ---
