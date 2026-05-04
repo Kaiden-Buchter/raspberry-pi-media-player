@@ -283,7 +283,7 @@ Persistent=true
 WantedBy=media-player.target
 EOF
 
-    # Create daily reboot service
+    # Create daily reboot service (runs when timer triggers)
     cat > /tmp/daily-reboot.service << EOF
 [Unit]
 Description=Reboot the system
