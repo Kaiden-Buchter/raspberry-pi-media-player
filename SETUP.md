@@ -334,9 +334,9 @@ sudo systemctl stop media-player.target
 sudo systemctl restart media-player.target
 ```
 
-**List all media player services:**
+**Show all services in media player target:**
 ```bash
-sudo systemctl list-units --target=media-player.target
+sudo systemctl list-dependencies media-player.target
 ```
 
 **Manage individual services:**

@@ -348,7 +348,7 @@ echo
 if [[ "$AUTOSTART" == "1" ]]; then
     echo "   6. All services grouped under 'media-player.target'. Check status:"
     echo "      sudo systemctl status media-player.target"
-    echo "      sudo systemctl list-units --target=media-player.target"
+    echo "      sudo systemctl list-dependencies media-player.target"
     echo
     echo "   7. Individual service status:"
     echo "      sudo systemctl status gdrive-sync.service"
